@@ -1,0 +1,64 @@
+import os
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackContext
+
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Replace with your bot token
+BOT_TOKEN = os.getenv("7372125963:AAECSttfmBReDaO14Cs8A1piaKdHer_2ghc")
+
+# Dictionary to store user invites {user_id: invite_count}
+invite_counts = {}
+
+def invite(update: Update, context: CallbackContext) -> None:
+    """Handles the /invite command and tracks invites."""
+    user_id = update.message.from_user.id
+    args = context.args
+
+    # If the user was referred by someone else, update the referrer's count
+    if args:
+        referrer_id = args[0]
+        if referrer_id.isdigit():
+            referrer_id = int(referrer_id)
+            if referrer_id != user_id:  # Avoid self-referral
+                invite_counts[referrer_id] = invite_counts.get(referrer_id, 0) + 1
+                context.bot.send_message(chat_id=referrer_id, text=f"You've invited a new member! Total invites: {invite_counts[referrer_id]}")
+    
+    referral_link = f"https://t.me/{context.bot.username}?invite={user_id}"
+    invite_button = InlineKeyboardButton(text="Invite Friends", url=referral_link)
+    reply_markup = InlineKeyboardMarkup([[invite_button]])
+
+    update.message.reply_text("Use the button below to invite friends:", reply_markup=reply_markup)
+
+def info(update: Update, context: CallbackContext) -> None:
+    """Handles the /info command to display the user's invite count."""
+    user_id = update.message.from_user.id
+    invite_count = invite_counts.get(user_id, 0)
+    update.message.reply_text(f"You have invited {invite_count} people.")
+
+def error(update: Update, context: CallbackContext) -> None:
+    """Log Errors caused by Updates."""
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
+
+def main():
+    """Start the bot using long polling."""
+    updater = Updater(BOT_TOKEN, use_context=True)
+
+    # Register command handlers
+    updater.dispatcher.add_handler(CommandHandler("invite", invite, pass_args=True))
+    updater.dispatcher.add_handler(CommandHandler("info", info))
+
+    # Log all errors
+    updater.dispatcher.add_error_handler(error)
+
+    # Start the bot using polling
+    updater.start_polling()
+
+    # Run the bot until Ctrl-C or process is stopped
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
