@@ -1,2 +1,2 @@
-worker: python app/ach.py
+worker: python app/main.py
 
