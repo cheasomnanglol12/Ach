@@ -1,2 +1,2 @@
-worker: python src/ach.py
+worker: python ach.py
 
